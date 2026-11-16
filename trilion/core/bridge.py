@@ -11,6 +11,7 @@ class Bridge(QObject):
     out_level = Signal(float)
     message = Signal(str, str)   # role (user|assistant|action|error), text
     caption = Signal(str)
+    expression = Signal(str)    # neutral | warm | amused | stern | thoughtful | concerned | alert
     confirm_req = Signal(str, object)
 
     def ask(self, question):
