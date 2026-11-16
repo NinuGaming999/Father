@@ -1,4 +1,5 @@
 """The in-character voice and affect vocabulary used by Trilion's Arlecchino persona."""
+# The language model selects one bounded mood label for each structured response.
 
 import re
 
