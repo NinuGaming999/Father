@@ -46,7 +46,7 @@ class AvatarWidget(QWidget):
             page = asset_path("assets", "avatar", "viewer.html")
             model = asset_path("assets", "avatar", "arlecchino.glb")
             three = asset_path("assets", "vendor", "three.module.js")
-            loader = asset_path("assets", "vendor", "GLTFLoader.js")
+            loader = asset_path("assets", "vendor", "loaders", "GLTFLoader.js")
             if not all(p.is_file() for p in (page, model, three, loader)):
                 raise FileNotFoundError("Avatar runtime assets are incomplete.")
 
