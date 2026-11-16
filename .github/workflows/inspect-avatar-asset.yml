@@ -13,5 +13,9 @@ jobs:
       - name: Inspect FBX skeleton and animation
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y assimp-utils
-          assimp info source/arlecchino.fbx
+          sudo apt-get install -y assimp-utils unzip
+          mkdir -p /tmp/arlecchino
+          unzip -q genshin-impact-arlecchino.zip -d /tmp/arlecchino
+          assimp info /tmp/arlecchino/source/arlecchino.fbx
+          assimp export /tmp/arlecchino/source/arlecchino.fbx /tmp/arlecchino.glb -f glb2
+          ls -lh /tmp/arlecchino.glb
