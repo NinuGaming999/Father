@@ -205,8 +205,23 @@ def parse_structured(full):
                 obj = None
     if isinstance(obj, dict) and ("say" in obj or "action" in obj):
         act = _norm(obj.get("action")) if isinstance(obj.get("action"), dict) else None
-        return str(obj.get("say") or "").strip(), ([act] if act else []), normalize_mood(obj.get("mood"))
-    return strip_actions(full), parse_actions(full), infer_mood(full)
+        return str(obj.get("say") or "").strip(), ([act] if act else [])
+    return strip_actions(full), parse_actions(full)
+
+
+def parse_structured_mood(full):
+    """Read the optional-to-legacy but schema-required mood value without changing the parser's tuple API."""
+    try:
+        obj = json.loads(full.strip())
+    except Exception:
+        try:
+            text = full.strip()
+            obj = json.loads(text[text.find("{"):text.rfind("}") + 1])
+        except Exception:
+            obj = None
+    if isinstance(obj, dict):
+        return normalize_mood(obj.get("mood"))
+    return infer_mood(full)
 
 
 def clean_for_speech(s):
@@ -496,8 +511,8 @@ class Assistant:
                 streamer.feed(say.feed(delta) if structured else delta)
             streamer.finish()
             self.history.append({"role": "assistant", "content": full})
-            said, actions, mood = parse_structured(full)
-            self._emit_mood(mood)
+            said, actions = parse_structured(full)
+            self._emit_mood(parse_structured_mood(full))
             if said:
                 self.bridge.message.emit("assistant", said)
             if not actions or self.cancel.is_set():
