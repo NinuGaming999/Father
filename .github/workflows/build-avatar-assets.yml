@@ -6,6 +6,7 @@ on:
       - feature/arlecchino-avatar
     paths:
       - ".github/workflows/build-avatar-assets.yml"
+      - "genshin-impact-arlecchino.zip"
   workflow_dispatch:
 
 permissions:
