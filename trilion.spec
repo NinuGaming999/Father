@@ -2,8 +2,9 @@
 from PyInstaller.utils.hooks import collect_all
 
 datas = [("assets/trilion.ico", "assets"), ("assets/trilion.png", "assets"),
+         ("assets/avatar", "assets/avatar"), ("assets/vendor", "assets/vendor"),
          ("skills_builtin", "skills_builtin")]
-binaries, hidden = [], ["sounddevice", "pyautogui", "pyperclip", "mss"]
+binaries, hidden = ["PySide6.QtWebEngineWidgets", "PySide6.QtWebChannel"], ["sounddevice", "pyautogui", "pyperclip", "mss"]
 for pkg in ("faster_whisper", "ctranslate2", "onnxruntime", "kokoro_onnx", "espeakng_loader",
             "phonemizer", "language_tags", "segments", "csvw", "tokenizers", "av", "_sounddevice_data",
             "uiautomation", "comtypes"):
