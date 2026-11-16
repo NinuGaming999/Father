@@ -262,8 +262,9 @@ class MainWindow(QWidget):
         # --- hero
         hero = Panel("", pad=(8, 8, 8, 10))
         from .. import __version__
-        self.orb = OrbWidget(__version__)
-        hero.body.addWidget(self.orb, 1)
+        from .avatar import AvatarWidget
+        self.avatar = AvatarWidget(__version__)
+        hero.body.addWidget(self.avatar, 1)
         self.caption = QLabel("")
         self.caption.setAlignment(Qt.AlignCenter)
         self.caption.setWordWrap(True)
@@ -546,6 +547,7 @@ class MainWindow(QWidget):
         b.mic_level.connect(lambda v: setattr(self, "mic_lvl", v))
         b.out_level.connect(lambda v: setattr(self, "out_lvl", v))
         b.caption.connect(self.caption.setText)
+        b.expression.connect(self.avatar.set_mood)
         b.message.connect(self._on_message)
         b.confirm_req.connect(self._on_confirm)
         self.search.textChanged.connect(self.feed.set_filter)
@@ -706,8 +708,8 @@ class MainWindow(QWidget):
         self.wave.set_level(lvl)
         self.wave.tick(dt)
         c, wl = self.wave.color, self.wave.level
+        self.avatar.set_activity(shown, lvl)
         if self.stack.currentIndex() == self.pages["command"]:
-            self.orb.tick(t, wl, shown, c)
             for a in self.agents.values():
                 a.wave.tick(t, wl)
             self.timeline.tick(t)
