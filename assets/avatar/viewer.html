@@ -45,8 +45,7 @@ const stage = document.getElementById("stage");
 const veil = document.getElementById("veil");
 const statusLine = document.getElementById("status");
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(31, 1, 0.05, 100);
-camera.position.set(0, 1.05, 4.15);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
 
 const renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true, powerPreference:"low-power" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -174,10 +173,14 @@ loader.load("./arlecchino.glb", gltf => {
   root.userData.baseY = root.position.y;
   root.userData.baseYaw = root.rotation.y;
   scene.add(root);
+  const fittedHeight = size.y * scale;
+  const fov = THREE.MathUtils.degToRad(camera.fov);
+  const distance = (fittedHeight * 0.5 / Math.tan(fov * 0.5)) * 1.18;
+  camera.position.set(0, fittedHeight * 0.10, distance);
+  camera.lookAt(0, fittedHeight * 0.02, 0);
 
   for (const [keyName, boneName] of Object.entries(boneNames)) bones[keyName] = findBone(root, boneName);
   saveBase();
-  camera.lookAt(0, 1.15, 0);
   veil.style.display = "none";
 }, undefined, error => {
   console.error("Arlecchino model failed to load", error);
