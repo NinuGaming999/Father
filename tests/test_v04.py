@@ -100,7 +100,7 @@ def test_schema_covers_every_tool_and_requires_the_right_args():
     sch = reply_schema()
     variants = sch["properties"]["action"]["anyOf"][1]["oneOf"]
     assert len(variants) == len(specs) and all(v["properties"]["tool"]["const"] in specs for v in variants)
-    assert sch["required"] == ["say", "action"]
+    assert sch["required"] == ["say", "action", "mood"]
     # every tool mentioned in the docs exists
     from trilion.core.minecraft import MC_DOCS, MC_TOOLS
     from trilion.core.tools import TOOL_DOCS
