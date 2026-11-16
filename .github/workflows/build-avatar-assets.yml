@@ -1,0 +1,82 @@
+name: Build Arlecchino avatar assets
+
+on:
+  push:
+    branches:
+      - feature/arlecchino-avatar
+    paths:
+      - ".github/workflows/build-avatar-assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/arlecchino-avatar
+          fetch-depth: 0
+
+      - name: Install asset tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y assimp-utils unzip
+
+      - name: Convert FBX to GLB
+        run: |
+          mkdir -p /tmp/arlecchino assets/avatar assets/vendor
+          unzip -q genshin-impact-arlecchino.zip -d /tmp/arlecchino
+          assimp info /tmp/arlecchino/source/arlecchino.fbx > /tmp/arlecchino/assimp-info.txt
+          assimp export /tmp/arlecchino/source/arlecchino.fbx assets/avatar/arlecchino.glb -f glb2
+          ls -lh assets/avatar/arlecchino.glb
+          python - <<'PY'
+          import json, struct
+          from pathlib import Path
+          p=Path("assets/avatar/arlecchino.glb").read_bytes()
+          magic, version, length=struct.unpack_from("<4sII",p,0)
+          if magic != b"glTF" or version != 2 or length != len(p):
+              raise SystemExit("Invalid GLB header")
+          off=12
+          doc=None
+          while off < len(p):
+              n, typ=struct.unpack_from("<II",p,off); off += 8
+              chunk=p[off:off+n]; off += n
+              if typ == 0x4E4F534A:
+                  doc=json.loads(chunk.rstrip(b"\\x00 \\t\\r\\n"))
+                  break
+          if doc is None: raise SystemExit("GLB has no JSON scene")
+          nodes=doc.get("nodes",[])
+          skins=doc.get("skins",[])
+          names=[n.get("name","") for n in nodes]
+          interesting=[n for n in names if any(k in n.lower() for k in ("head","neck","jaw","mouth","eye","lid","brow","spine","upperarm","forearm","hair"))]
+          report={
+              "format":"glb2",
+              "node_count":len(nodes),
+              "mesh_count":len(doc.get("meshes",[])),
+              "skin_count":len(skins),
+              "joint_count":sum(len(s.get("joints",[])) for s in skins),
+              "has_morph_targets":any(pr.get("targets") for m in doc.get("meshes",[]) for pr in m.get("primitives",[])),
+              "interesting_nodes":interesting,
+              "skin_joints":[names[i] if i < len(names) else str(i) for skin in skins for i in skin.get("joints",[])],
+          }
+          Path("assets/avatar/manifest.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
+          print(json.dumps({k:v for k,v in report.items() if k!="skin_joints"},indent=2))
+          print("SKIN_JOINTS", json.dumps(report["skin_joints"]))
+          PY
+
+      - name: Fetch pinned local Three.js modules
+        run: |
+          curl -fL --retry 3 https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js -o assets/vendor/three.module.js
+          curl -fL --retry 3 https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/loaders/GLTFLoader.js -o assets/vendor/GLTFLoader.js
+          printf '%s\n' "Three.js r168 (MIT) - https://github.com/mrdoob/three.js" > assets/vendor/THREE-LICENSE.txt
+
+      - name: Commit generated runtime assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/avatar assets/vendor
+          git commit -m "Add converted Arlecchino avatar runtime assets" || exit 0
+          git push origin HEAD:feature/arlecchino-avatar
