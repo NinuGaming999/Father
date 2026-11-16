@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arlecchino Avatar</title>
+<style>
+html, body { width:100%; height:100%; margin:0; overflow:hidden; background:transparent; }
+body {
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(102,20,42,.30), transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(16,23,42,.85), transparent 65%);
+  color:#f2e9ed; font-family:"Segoe UI",sans-serif;
+}
+#stage { position:absolute; inset:0; }
+canvas { display:block; width:100%; height:100%; }
+#status {
+  position:absolute; left:0; right:0; bottom:5px; text-align:center;
+  color:rgba(226,199,208,.72); font-size:10px; letter-spacing:2.5px;
+  text-transform:uppercase; pointer-events:none; text-shadow:0 1px 8px #080910;
+}
+#veil {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  color:#bba8b0; font-size:12px; letter-spacing:1px; background:rgba(10,10,17,.22);
+  pointer-events:none;
+}
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "../vendor/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="veil">Preparing the Knave…</div>
+<div id="status">THE KNAVE · HOUSE OF THE HEARTH</div>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "../vendor/GLTFLoader.js";
+
+const stage = document.getElementById("stage");
+const veil = document.getElementById("veil");
+const statusLine = document.getElementById("status");
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(31, 1, 0.05, 100);
+camera.position.set(0, 1.05, 4.15);
+
+const renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true, powerPreference:"low-power" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.setClearColor(0x000000, 0);
+stage.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xf4e7ed, 0x17101a, 2.0));
+const key = new THREE.DirectionalLight(0xffe5e9, 3.0);
+key.position.set(-3, 5, 5); scene.add(key);
+const fill = new THREE.DirectionalLight(0x9aaed7, 1.35);
+fill.position.set(3, 2, -3); scene.add(fill);
+const rim = new THREE.PointLight(0x9e1f46, 12, 7);
+rim.position.set(0, 2.1, -1.5); scene.add(rim);
+
+let root = null;
+let bones = {};
+let base = new Map();
+let current = {state:"idle", level:0, mood:"neutral"};
+let t0 = performance.now();
+const boneNames = {
+  head:"ValveBiped.Bip01_Head1",
+  neck:"ValveBiped.Bip01_Neck1",
+  spine:"ValveBiped.Bip01_Spine4",
+  spine2:"ValveBiped.Bip01_Spine2",
+  leftArm:"ValveBiped.Bip01_L_UpperArm",
+  rightArm:"ValveBiped.Bip01_R_UpperArm",
+  leftForearm:"ValveBiped.Bip01_L_Forearm",
+  rightForearm:"ValveBiped.Bip01_R_Forearm"
+};
+
+function findBone(model, exact) {
+  let found = null;
+  model.traverse(o => { if (!found && o.isBone && o.name === exact) found = o; });
+  return found;
+}
+function saveBase() {
+  for (const bone of Object.values(bones)) if (bone) base.set(bone, bone.rotation.clone());
+  root.traverse(o => {
+    if (o.isBone && /hair/i.test(o.name)) base.set(o, o.rotation.clone());
+  });
+}
+function moodShape(mood) {
+  return ({
+    neutral:[0,0,0],
+    warm:[-0.025,0.045,0.02],
+    amused:[0.015,-0.07,0.035],
+    stern:[0.075,0,-0.015],
+    thoughtful:[-0.09,0.055,-0.035],
+    concerned:[0.065,0.035,0.04],
+    alert:[-0.075,0,0]
+  })[mood] || [0,0,0];
+}
+function applyPose(t) {
+  for (const [bone, rot] of base) bone.rotation.copy(rot);
+  const state = current.state;
+  const mood = current.mood;
+  const level = current.level;
+  const speaking = state === "speaking";
+  const listening = state === "listening";
+  const thinking = state === "thinking";
+  const acting = state === "acting";
+  const [moodX,moodY,moodZ] = moodShape(mood);
+  const breath = Math.sin(t * 1.65) * 0.012;
+  const emphasis = speaking ? Math.sin(t * 3.7) : 0;
+  const lean = listening ? -0.055 : thinking ? -0.025 : acting ? 0.035 : 0;
+
+  if (bones.spine) {
+    bones.spine.rotation.x += breath + lean + (speaking ? emphasis * 0.018 : 0);
+    bones.spine.rotation.z += Math.sin(t * 0.65) * 0.008;
+  }
+  if (bones.spine2) bones.spine2.rotation.x += speaking ? emphasis * 0.012 : breath * 0.45;
+  if (bones.neck) {
+    bones.neck.rotation.x += moodX * 0.22 + (listening ? -0.025 : 0) + (speaking ? Math.sin(t*2.8)*0.018 : 0);
+    bones.neck.rotation.z += moodZ * 0.25;
+  }
+  if (bones.head) {
+    bones.head.rotation.x += moodX + (listening ? -0.045 : 0) + (thinking ? -0.025 : 0)
+      + (speaking ? Math.sin(t*3.2)*0.045 : Math.sin(t*0.48)*0.012);
+    bones.head.rotation.y += moodY + (thinking ? Math.sin(t*0.7)*0.07 : Math.sin(t*0.38)*0.025);
+    bones.head.rotation.z += moodZ + Math.sin(t*0.57)*0.012;
+  }
+  if (bones.leftArm) bones.leftArm.rotation.z += (speaking ? 0.035 + Math.sin(t*2.3)*0.035 : 0) + (acting ? 0.025 : 0);
+  if (bones.rightArm) bones.rightArm.rotation.z += (speaking ? -0.035 - Math.sin(t*2.3+0.7)*0.04 : 0) - (acting ? 0.025 : 0);
+  if (bones.leftForearm && speaking) bones.leftForearm.rotation.x += Math.max(0, emphasis) * 0.025;
+  if (bones.rightForearm && speaking) bones.rightForearm.rotation.x -= Math.max(0, emphasis) * 0.025;
+
+  if (root) {
+    const baseY = root.userData.baseY || 0;
+    root.rotation.y = (root.userData.baseYaw || 0) + Math.sin(t*0.28)*0.018 + (thinking ? 0.03 : 0);
+    root.position.y = baseY + Math.sin(t*1.65)*0.009 + (speaking ? level*0.006 : 0);
+  }
+  if (root) root.traverse(o => {
+    if (o.isBone && /hair/i.test(o.name)) {
+      const b = base.get(o);
+      if (b) {
+        o.rotation.x += Math.sin(t*1.4 + o.id*0.07)*0.012;
+        o.rotation.z += Math.cos(t*1.1 + o.id*0.04)*0.01;
+      }
+    }
+  });
+}
+
+const loader = new GLTFLoader();
+loader.load("./arlecchino.glb", gltf => {
+  root = gltf.scene;
+  root.traverse(o => {
+    if (o.isMesh) {
+      o.frustumCulled = true;
+      if (o.material) {
+        o.material.side = THREE.DoubleSide;
+        o.material.needsUpdate = true;
+      }
+    }
+  });
+  const box = new THREE.Box3().setFromObject(root);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box.getSize(size); box.getCenter(center);
+  const scale = 2.55 / Math.max(size.y, 0.001);
+  root.scale.setScalar(scale);
+  root.position.set(-center.x*scale, -center.y*scale, -center.z*scale);
+  root.userData.baseY = root.position.y;
+  root.userData.baseYaw = root.rotation.y;
+  scene.add(root);
+
+  for (const [keyName, boneName] of Object.entries(boneNames)) bones[keyName] = findBone(root, boneName);
+  saveBase();
+  camera.lookAt(0, 1.15, 0);
+  veil.style.display = "none";
+}, undefined, error => {
+  console.error("Arlecchino model failed to load", error);
+  veil.textContent = "The avatar model could not be loaded";
+  statusLine.textContent = "CHECK THE LOCAL AVATAR ASSETS";
+});
+
+window.trilionAvatar = {
+  setState(next) {
+    if (!next || typeof next !== "object") return;
+    const states = ["idle","listening","thinking","speaking","acting"];
+    const moods = ["neutral","warm","amused","stern","thoughtful","concerned","alert"];
+    current.state = states.includes(next.state) ? next.state : "idle";
+    current.mood = moods.includes(next.mood) ? next.mood : "neutral";
+    current.level = Math.max(0, Math.min(1, Number(next.level) || 0));
+    const names = {idle:"Composed", listening:"Attentive", thinking:"Considering", speaking:"Speaking", acting:"At work"};
+    statusLine.textContent = "THE KNAVE · " + names[current.state].toUpperCase();
+  }
+};
+
+function resize() {
+  const w = Math.max(stage.clientWidth, 1), h = Math.max(stage.clientHeight, 1);
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+
+function frame(now) {
+  const t = (now - t0) / 1000;
+  if (root) applyPose(t);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
