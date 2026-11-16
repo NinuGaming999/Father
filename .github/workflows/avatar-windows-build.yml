@@ -1,0 +1,50 @@
+name: Build Arlecchino Windows preview
+
+on:
+  push:
+    branches:
+      - feature/arlecchino-avatar
+    paths:
+      - "trilion/**"
+      - "assets/avatar/**"
+      - "assets/vendor/**"
+      - "requirements.txt"
+      - "trilion.spec"
+      - "installer/**"
+      - ".github/workflows/avatar-windows-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install application dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt pyinstaller
+      - name: Build Trilion
+        run: pyinstaller trilion.spec --noconfirm
+      - name: Build installer
+        shell: powershell
+        run: |
+          choco install innosetup -y --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\trilion.iss
+      - name: Build portable archive
+        shell: powershell
+        run: Compress-Archive -Path dist\Trilion -DestinationPath dist\Trilion-Arlecchino-preview.zip -CompressionLevel Optimal
+      - name: Upload Windows preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trilion-Arlecchino-Windows-preview
+          path: |
+            dist/Trilion-Setup.exe
+            dist/Trilion-Arlecchino-preview.zip
+          compression-level: 0
