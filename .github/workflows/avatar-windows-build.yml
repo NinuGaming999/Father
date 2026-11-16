@@ -57,12 +57,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $release = "arlecchino-preview"
-          gh release view $release --repo $env:GITHUB_REPOSITORY 2>$null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload $release dist\Trilion-Setup.exe --repo $env:GITHUB_REPOSITORY --clobber
+          $repo = $env:GITHUB_REPOSITORY
+          $tags = gh release list --repo $repo --limit 100 --json tagName --jq ".[].tagName"
+          if ($LASTEXITCODE -ne 0) { throw "Unable to list GitHub releases." }
+          if ($tags -contains $release) {
+            gh release upload $release dist\Trilion-Setup.exe --repo $repo --clobber
           } else {
-            gh release create $release dist\Trilion-Setup.exe --repo $env:GITHUB_REPOSITORY --title "Trilion Arlecchino Preview" --notes "Windows installer for the Arlecchino avatar build. The 3D model and Qt WebEngine runtime are included." --target $env:GITHUB_SHA --prerelease
+            gh release create $release dist\Trilion-Setup.exe --repo $repo --title "Trilion Arlecchino Preview" --notes "Windows installer for the Arlecchino avatar build. The 3D model and Qt WebEngine runtime are included." --target $env:GITHUB_SHA --prerelease
           }
+          if ($LASTEXITCODE -ne 0) { throw "Failed to publish Trilion-Setup.exe." }
       - name: Build portable archive
         shell: powershell
         run: Compress-Archive -Path dist\Trilion -DestinationPath dist\Trilion-Arlecchino-preview.zip -CompressionLevel Optimal
