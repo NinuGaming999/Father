@@ -30,8 +30,22 @@ jobs:
         run: |
           python -m pip install -U pip
           pip install -r requirements.txt pyinstaller
+      - name: Verify Qt WebEngine is installed
+        run: |
+          python -c "from PySide6.QtWebEngineCore import QWebEnginePage; from PySide6.QtWebEngineWidgets import QWebEngineView; print('Qt WebEngine imports OK')"
       - name: Build Trilion
         run: pyinstaller trilion.spec --noconfirm
+      - name: Verify packaged Arlecchino renderer
+        shell: powershell
+        run: |
+          $root = (Resolve-Path "dist\Trilion\_internal").Path
+          $required = @("arlecchino.glb", "viewer.html", "QtWebEngineCore.pyd", "QtWebEngineWidgets.pyd", "QtWebEngineProcess.exe")
+          $files = Get-ChildItem -LiteralPath $root -Recurse -File
+          foreach ($name in $required) {
+            $match = $files | Where-Object { $_.Name -eq $name -or $_.Name -like "$name.*" } | Select-Object -First 1
+            if (-not $match) { throw "Required avatar runtime file missing from build: $name" }
+            Write-Host "Found $name at $($match.FullName)"
+          }
       - name: Build installer
         shell: powershell
         run: |
