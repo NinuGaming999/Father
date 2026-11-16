@@ -8,6 +8,7 @@ import time
 
 from . import screen
 from .memory import Memory
+from .persona import PERSONA_PROMPT, infer_mood, normalize_mood
 from .minecraft import MC_DOCS, MC_RULES, MC_TOOLS
 from .skills import Skills
 from .tools import SCREEN_TOOLS, TOOL_DOCS, Tools, is_failure, reply_schema
@@ -17,11 +18,7 @@ log = logging.getLogger("trilion.agent")
 WAKE_RE = re.compile(r"\b(tri+l+[iy]?[oae]n|tri+l+ing|tri+\s?lion|try\s?lion|tri+\s?leon|trillion|trillian|trilian|trylon)\b[,.!?]?", re.I)
 ACTION_RE = re.compile(r"<action>\s*(\{.*?\})\s*</action>", re.S)
 
-_INTRO = """You are Trilion, a friendly voice assistant living on the user's Windows PC. \
-You can SEE their screen (a screenshot is attached to their messages) and CONTROL the PC with tools.
-
-Your replies are spoken aloud, so: 1-3 short sentences, plain words, no markdown, no lists, no emojis.
-"""
+_INTRO = """You are the user's Windows desktop assistant. You can SEE their screen and CONTROL the PC with tools. Your replies are spoken aloud, so keep ordinary replies concise unless the user asks for detail."""
 
 _FORMAT_TAGS = """To use tools, end your reply with one or more action tags, exactly like this:
 <action>{{"tool": "<tool name>", "args": {{<arguments from the tool list>}}}}</action>
@@ -30,12 +27,11 @@ reply normally with no action tag.
 Never write a tool name as plain words; a command only works inside the action tag.
 """.replace("{{", "{").replace("}}", "}")
 
-_FORMAT_JSON = """Reply ONLY with a JSON object with exactly two keys:
+_FORMAT_JSON = """Reply ONLY with a JSON object with exactly three keys:
 "say": what you speak aloud (1-2 short plain sentences; "" if there is nothing to say).
-"action": ONE tool call as {"tool": "<tool name>", "args": {<arguments from the tool list>}}, or null when you \
-are finished or only chatting.
-After an action runs you receive its result and a fresh screenshot, then you reply again. \
-Say briefly what you are about to do in "say" before acting.
+"action": ONE tool call as {"tool": "<tool name>", "args": {<arguments from the tool list>}}, or null when you are finished or only chatting.
+"mood": one of "neutral", "warm", "amused", "stern", "thoughtful", "concerned", "alert".
+After an action runs you receive its result and a fresh screenshot, then you reply again. Say briefly what you are about to do in "say" before acting.
 """
 
 _RULES = """Only use a tool when the user asked you to DO something. For questions, chat, or unclear speech, just answer in words (or ask what they mean) and do NOT use any tool.
@@ -73,7 +69,7 @@ _COORDS = {
 
 def build_system(structured=False, coord_mode="pixel"):
     fmt = _FORMAT_JSON if structured else _FORMAT_TAGS
-    return _INTRO + "\n" + fmt + "\n" + _RULES.replace("{COORDS}", _COORDS.get(coord_mode, _COORDS["pixel"])) + TOOL_DOCS + "\n"
+    return PERSONA_PROMPT + "\n\n" + _INTRO + "\n" + fmt + "\n" + _RULES.replace("{COORDS}", _COORDS.get(coord_mode, _COORDS["pixel"])) + TOOL_DOCS + "\n"
 
 
 GAME_RULES = """GAME MODE IS ON for '{WINDOW}'. You play like a human using only the keyboard and mouse.
@@ -209,8 +205,8 @@ def parse_structured(full):
                 obj = None
     if isinstance(obj, dict) and ("say" in obj or "action" in obj):
         act = _norm(obj.get("action")) if isinstance(obj.get("action"), dict) else None
-        return str(obj.get("say") or "").strip(), ([act] if act else [])
-    return strip_actions(full), parse_actions(full)
+        return str(obj.get("say") or "").strip(), ([act] if act else []), normalize_mood(obj.get("mood"))
+    return strip_actions(full), parse_actions(full), infer_mood(full)
 
 
 def clean_for_speech(s):
@@ -457,6 +453,7 @@ class Assistant:
                 self.bridge.message.emit("error", res[:200])
             note = f" [did {action['tool']}: {res[:80]}]"
         self.bridge.message.emit("assistant", speech)
+        self._emit_mood(infer_mood(speech))
         self._speak(speech)
         self.history.append({"role": "user", "content": text})
         reply = json.dumps({"say": speech, "action": action}, ensure_ascii=False) if self._structured() else speech + note
@@ -464,12 +461,21 @@ class Assistant:
         self._trim()
         return True
 
+    def _emit_mood(self, mood):
+        signal = getattr(self.bridge, "expression", None)
+        if signal is not None:
+            try:
+                signal.emit(normalize_mood(mood))
+            except Exception:
+                log.debug("could not update avatar mood", exc_info=True)
+
     def _speak(self, sentence):
         self._state("speaking")
         self.speaker.say(sentence)
 
     def _turn(self, text, show_user=True):
         self.bridge.message.emit("user", text)
+        self._emit_mood(infer_mood(text, role="user"))
         self.tools.note_text(text)
         if self._quick(text):
             return
@@ -490,10 +496,8 @@ class Assistant:
                 streamer.feed(say.feed(delta) if structured else delta)
             streamer.finish()
             self.history.append({"role": "assistant", "content": full})
-            if structured:
-                said, actions = parse_structured(full)
-            else:
-                said, actions = strip_actions(full), parse_actions(full)
+            said, actions, mood = parse_structured(full)
+            self._emit_mood(mood)
             if said:
                 self.bridge.message.emit("assistant", said)
             if not actions or self.cancel.is_set():
