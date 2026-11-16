@@ -55,7 +55,7 @@ class AvatarWidget(QWidget):
             settings.setAttribute(QWebEngineSettings.LocalContentCanAccessFileUrls, True)
             settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, False)
             view.setContextMenuPolicy(Qt.NoContextMenu)
-            view.setPageBackgroundColor(Qt.transparent)
+            view.page().setBackgroundColor(Qt.transparent)
             view.loadFinished.connect(self._on_loaded)
             view.load(QUrl.fromLocalFile(str(page.resolve())))
             self._view = view
