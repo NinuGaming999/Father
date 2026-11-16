@@ -6,7 +6,8 @@ datas = [("assets/trilion.ico", "assets"), ("assets/trilion.png", "assets"),
          ("skills_builtin", "skills_builtin")]
 binaries, hidden = [], ["sounddevice", "pyautogui", "pyperclip", "mss",
                         "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.QtWebChannel"]
-for pkg in ("faster_whisper", "ctranslate2", "onnxruntime", "kokoro_onnx", "espeakng_loader",
+for pkg in ("PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.QtWebChannel",
+            "faster_whisper", "ctranslate2", "onnxruntime", "kokoro_onnx", "espeakng_loader",
             "phonemizer", "language_tags", "segments", "csvw", "tokenizers", "av", "_sounddevice_data",
             "uiautomation", "comtypes"):
     try:
