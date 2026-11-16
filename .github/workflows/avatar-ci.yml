@@ -1,0 +1,33 @@
+name: Arlecchino integration tests
+
+on:
+  push:
+    branches:
+      - feature/arlecchino-avatar
+    paths:
+      - "trilion/**"
+      - "tests/**"
+      - "assets/avatar/**"
+      - "assets/vendor/**"
+      - "requirements.txt"
+      - "trilion.spec"
+      - ".github/workflows/avatar-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: python -m pip install pytest requests numpy pillow PySide6-Essentials
+      - name: Run tests
+        run: python -m pytest -q tests
