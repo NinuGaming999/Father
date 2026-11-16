@@ -11,12 +11,20 @@ On the **first launch** Trilion downloads the engine and models (about 9 GB) onc
 with a progress bar. Later launches only load the models into memory.
 
 ## The interface (v0.8): Trilion Command Center
-A dark-glass dashboard with a rotating triangle-mesh **AI core**, and every panel shows real data:
+A dark-glass dashboard with a live **Arlecchino 3D avatar** as its centrepiece, and every panel shows real data:
 - **AI Core Overview, Local Models, Active Agents:** live status of the brain, ears, voice, hands, eyes and game player (they light up and animate while they work).
 - **Live Intelligence Feed + Mission Timeline:** what you said, what Trilion replied, every action it ran (Running / Done / Failed), and warnings. The search box filters the feed.
 - **System Monitor:** CPU, RAM, disk and GPU memory. **Memory Insights:** what Trilion remembers, session turns, tool calls.
 - **Talk bar:** the big *TALK TO TRILION* button (or the mic in the sidebar, or Ctrl+Alt+T) with a triangular waveform that reacts to your voice and to Trilion's.
 - **Pages:** Command Center, AI Core, Conversations, Tools & Skills, Memory, Game Mode, Settings. *Focus Mode* hides everything except the core and the feed. The red square stops everything.
+
+## Arlecchino avatar and persona
+
+The dashboard's central AI core is replaced by the Arlecchino model supplied in `genshin-impact-arlecchino.zip`. The avatar is converted to a local GLB asset and rendered with a bundled Three.js viewer inside Qt WebEngine; it does not fetch scripts or models from a CDN at runtime.
+
+The local model has a 126-joint skeleton but no baked animation clips or facial morph targets. The first animation layer therefore procedurally drives breathing, head/neck movement, shoulder and arm gestures, hair sway, and pose changes for idle, listening, thinking, speaking and acting states. The model does not yet provide true lip-sync or facial expression morphs.
+
+The language model uses an Arlecchino roleplay persona and selects a bounded mood for each structured reply (neutral, warm, amused, stern, thoughtful, concerned or alert). That mood is sent to the avatar as an animation cue; it is not spoken aloud. Existing PC-tool confirmations and safety rules remain in force. If Qt WebEngine or the local avatar files are unavailable, the lightweight animated core remains as a fallback.
 
 ## Overlay and screen recording (v0.9)
 - **Overlay:** an always-on-top, see-through box with the Trilion core and a few lines of terminal data (state, brain, tokens/s, CPU/RAM/VRAM, mic/voice levels, your last actions with Done/Failed marks, and held keys + mouse movement in game mode). It never takes focus and clicks pass straight through it. Turn it on in Settings, the tray menu, or with **Ctrl+Alt+O**; **Ctrl+Alt+U** unlocks it so you can drag it; **Ctrl+Alt+M** cycles Compact / Standard / Full. Pick a corner and opacity in Settings.
@@ -28,7 +36,7 @@ A dark-glass dashboard with a rotating triangle-mesh **AI core**, and every pane
 
 ## The brain (v0.4)
 Trilion now runs **Qwen3.5 9B** (Q6_K, vision built in) through llama.cpp, with "thinking" switched off for speed.
-Replies are forced into a strict `{say, action}` JSON format by a grammar, so a command can never be malformed or read aloud.
+Replies are forced into a strict `{say, action, mood}` JSON format by a grammar, so commands remain structured and the avatar receives a bounded mood cue.
 On first launch it also runs a quick self-test to learn how the model writes click coordinates.
 If the engine rejects a flag or runs out of VRAM, Trilion retries automatically with safer settings; if strict mode is rejected it falls back to plain text.
 The older **Qwen2.5-VL 7B** brain is still available: tray menu -> *Use the lighter brain* (restart needed), or set `"brain": "qwen2.5-vl-7b"` in `config.json`.
