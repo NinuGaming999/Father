@@ -10,17 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inventory model archive
+      - name: Inspect FBX skeleton and animation
         run: |
-          python - <<'PY'
-          import zipfile
-          from collections import Counter
-          p = "genshin-impact-arlecchino.zip"
-          with zipfile.ZipFile(p) as z:
-              infos = [i for i in z.infolist() if not i.is_dir()]
-              print("ARCHIVE_FILES", len(infos))
-              print("ARCHIVE_BYTES", sum(i.file_size for i in infos))
-              print("EXTENSIONS", dict(Counter((i.filename.rsplit(".", 1)[-1].lower() if "." in i.filename else "<none>") for i in infos)))
-              for i in infos:
-                  print(f"FILE {i.file_size:>10} {i.filename}")
-          PY
+          sudo apt-get update -qq
+          sudo apt-get install -y assimp-utils
+          assimp info source/arlecchino.fbx
