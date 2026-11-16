@@ -785,5 +785,6 @@ def reply_schema(exclude=()):
             "required": ["tool", "args"], "additionalProperties": False})
     return {"type": "object",
             "properties": {"say": {"type": "string"},
-                           "action": {"anyOf": [{"type": "null"}, {"oneOf": variants}]}},
-            "required": ["say", "action"], "additionalProperties": False}
+                           "action": {"anyOf": [{"type": "null"}, {"oneOf": variants}]},
+                           "mood": {"type": "string", "enum": ["neutral", "warm", "amused", "stern", "thoughtful", "concerned", "alert"]}},
+            "required": ["say", "action", "mood"], "additionalProperties": False}
