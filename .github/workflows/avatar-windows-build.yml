@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   windows-build:
@@ -51,6 +51,18 @@ jobs:
         run: |
           choco install innosetup -y --no-progress
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\trilion.iss
+      - name: Publish direct EXE download
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $release = "arlecchino-preview"
+          gh release view $release --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $release dist\Trilion-Setup.exe --repo $env:GITHUB_REPOSITORY --clobber
+          } else {
+            gh release create $release dist\Trilion-Setup.exe --repo $env:GITHUB_REPOSITORY --title "Trilion Arlecchino Preview" --notes "Windows installer for the Arlecchino avatar build. The 3D model and Qt WebEngine runtime are included." --target $env:GITHUB_SHA --prerelease
+          }
       - name: Build portable archive
         shell: powershell
         run: Compress-Archive -Path dist\Trilion -DestinationPath dist\Trilion-Arlecchino-preview.zip -CompressionLevel Optimal
