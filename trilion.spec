@@ -4,7 +4,8 @@ from PyInstaller.utils.hooks import collect_all
 datas = [("assets/trilion.ico", "assets"), ("assets/trilion.png", "assets"),
          ("assets/avatar", "assets/avatar"), ("assets/vendor", "assets/vendor"),
          ("skills_builtin", "skills_builtin")]
-binaries, hidden = ["PySide6.QtWebEngineWidgets", "PySide6.QtWebChannel"], ["sounddevice", "pyautogui", "pyperclip", "mss"]
+binaries, hidden = [], ["sounddevice", "pyautogui", "pyperclip", "mss",
+                        "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.QtWebChannel"]
 for pkg in ("faster_whisper", "ctranslate2", "onnxruntime", "kokoro_onnx", "espeakng_loader",
             "phonemizer", "language_tags", "segments", "csvw", "tokenizers", "av", "_sounddevice_data",
             "uiautomation", "comtypes"):
@@ -16,8 +17,7 @@ for pkg in ("faster_whisper", "ctranslate2", "onnxruntime", "kokoro_onnx", "espe
 
 a = Analysis(
     ["run_trilion.py"], pathex=["."], binaries=binaries, datas=datas, hiddenimports=hidden,
-    excludes=["tkinter", "matplotlib", "scipy", "pandas", "torch", "PySide6.QtWebEngineCore",
-              "PySide6.QtQml", "PySide6.QtQuick", "PySide6.Qt3DCore", "IPython", "pytest"],
+    excludes=["tkinter", "matplotlib", "scipy", "pandas", "torch", "PySide6.QtQml", "PySide6.QtQuick", "PySide6.Qt3DCore", "IPython", "pytest"],
     noarchive=False,
 )
 
